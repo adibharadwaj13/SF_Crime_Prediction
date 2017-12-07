@@ -7,48 +7,58 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+def do_plot(data,num,title_str):
+    plt.figure(num)
+    plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
+    plt.xlabel('Time of Occurrence')
+    plt.ylabel('Relative Probability in %', rotation = 'vertical')
+#    plt.yticks(data, )
+    plt.title('Probability of ' + title_str + ' Relative to Other Common Crimes')
+    plt.bar(hours_list,data)
 
-
+#Read in our dataset
 df = pd.read_csv('train.csv',usecols=['Dates','Category'], parse_dates=['Dates'])
+
+#Prepare lists for filtering and displaying data
 keep_list = ['LARCENY/THEFT','BURGLARY','ROBBERY','ASSAULT','DRUG/NARCOTIC','VEHICLE THEFT']
+titles_list = ['Larcenies or Thefts', 'Burglaries', 'Robberys', 'Assaults', 'Drug Offenses', 'Vehicle Thefts']
+crimes_list = ['LT','BURGLARY','ROBBERY','ASSAULT','DN','VT']
 hours_list = [hour for hour in range(24)]
+formatted_hours_list = ['Midnight']+['%d AM' %hour for hour in range(1,12)]+['Noon']+['%d PM' %hour for hour in range(1,12)]
+color_list = ['#050C42','#0284A8','#02BEC4','#A9E8DC','#E1F7E7'] 
+
+#Filter              
 df = df.query('Category in @keep_list').replace(['LARCENY/THEFT','DRUG/NARCOTIC','VEHICLE THEFT'],['LT','DN','VT'])
 df['Hour'] = df['Dates'].apply(lambda x: int(x.hour))
 df = df.drop(['Dates'],axis = 1)
-dfdum = pd.get_dummies(df,columns=['Category'])
 
-sample_space = len(df)
+#List of lists for relative probability
+prob_list = [[(df.loc[(df['Hour'] == hour) & (df['Category'] == catstr), 'Category'].count()/float(len(df.loc[df['Hour'] == hour])))*100 for hour in hours_list] for catstr in crimes_list]
+#List of lists for frequency
+quant_list = [[df.loc[(df['Hour'] == hour) & (df['Category'] == catstr), 'Category'].count() for hour in hours_list] for catstr in crimes_list]
 
-lt_probability = [dfdum[dfdum.Hour == hour].Category_LT.sum()/float(sample_space) for hour in hours_list]
-burglary_probability = [dfdum[dfdum.Hour == hour].Category_BURGLARY.sum()/float(sample_space) for hour in hours_list]
-robbery_probability = [dfdum[dfdum.Hour == hour].Category_ROBBERY.sum()/float(sample_space) for hour in hours_list]
-assault_probability = [dfdum[dfdum.Hour == hour].Category_ASSAULT.sum()/float(sample_space) for hour in hours_list]
-dn_probability = [dfdum[dfdum.Hour == hour].Category_DN.sum()/float(sample_space) for hour in hours_list]
-vt_probability = [dfdum[dfdum.Hour == hour].Category_VT.sum()/float(sample_space) for hour in hours_list]
-formatted_hours_list = ['12 AM']+['%d AM' %hour for hour in range(1,12)]+['12 PM']+['%d PM' %hour for hour in range(1,12)]
+#Need counter for next bit
+i=0
+#Create a plot for every crime in the list
+for L in prob_list:
+    do_plot(L,i,titles_list[i])
+    i+=1
+#Create a plot for a single crime in the list
+do_plot(L,i,titles_list[i])
 
-plt.figure(1)
+#Stackplot fun
+plt.figure(i)
+i+=1
+plt.stackplot(hours_list,prob_list,baseline='zero',labels = titles_list,colors=color_list)
 plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
-plt.bar(hours_list,lt_probability)
+plt.xlabel('Time of Occurrence')
+plt.title('Percentage of Common Crimes')   
+plt.legend()
 
-plt.figure(2)
+plt.figure(i)
+i+=1
+plt.stackplot(hours_list,quant_list,baseline='zero',labels = titles_list,colors=color_list)
 plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
-plt.bar(hours_list,burglary_probability)
-
-plt.figure(3)
-plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
-plt.bar(hours_list,robbery_probability)
-
-plt.figure(4)
-plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
-plt.bar(hours_list,assault_probability)
-
-plt.figure(5)
-plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
-plt.bar(hours_list,dn_probability)
-
-plt.figure(6)
-plt.xticks(hours_list, formatted_hours_list, rotation='vertical')
-plt.bar(hours_list,vt_probability)
-
-#TODO: format this in a more algorithmic way, create a better visualisation
+plt.xlabel('Time of Occurrence')
+plt.title('Frequency of Common Crimes')
+plt.legend()
